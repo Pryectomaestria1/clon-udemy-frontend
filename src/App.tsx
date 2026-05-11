@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import Register from './Register';
+import { useAuth0 } from '@auth0/auth0-react';
 import Login from './Login';
 
 interface Course {
@@ -16,6 +16,7 @@ interface Course {
 function HomePage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  const { getAccessTokenSilently } = useAuth0();
 
   useEffect(() => {
     fetch('http://localhost:3000/v1/courses')
@@ -102,19 +103,11 @@ function HomePage() {
 }
 
 function App() {
-  const [user, setUser] = useState<any>(null);
+  const { user, isAuthenticated, logout, isLoading, loginWithRedirect } = useAuth0();
 
-  useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) setUser(JSON.parse(savedUser));
-  }, []);
-
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setUser(null);
-    window.location.href = '/';
-  };
+  if (isLoading) {
+    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>Cargando...</div>;
+  }
 
   return (
     <Router>
@@ -126,27 +119,42 @@ function App() {
         <div style={{ display: 'flex', gap: '15px', alignItems: 'center', fontSize: '14px', fontWeight: '500' }}>
           <span>Udemy Business</span>
           <span>Enseña en Udemy</span>
-          {user ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontWeight: 'bold' }}>Hola, {user.name}</span>
-              <button onClick={logout} style={{ border: '1px solid black', background: 'none', padding: '8px 12px', cursor: 'pointer' }}>Cerrar sesión</button>
+          {isAuthenticated && user ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontWeight: '600', color: '#2d2f31' }}>Hola, {user.name || user.nickname || user.email}</span>
+              <button 
+                onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })} 
+                style={{ border: '1px solid #2d2f31', background: 'white', padding: '8px 16px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' }}
+              >
+                Cerrar sesión
+              </button>
             </div>
           ) : (
             <>
-              <Link to="/login" style={{ textDecoration: 'none', color: 'black', border: '1px solid black', padding: '8px 12px' }}>Iniciar sesión</Link>
-              <Link to="/register" style={{ textDecoration: 'none', color: 'white', backgroundColor: 'black', padding: '8px 12px' }}>Regístrate</Link>
+              <button 
+                onClick={() => loginWithRedirect({ authorizationParams: { prompt: 'login' } })} 
+                style={{ backgroundColor: 'white', color: '#2d2f31', border: '1px solid #2d2f31', padding: '8px 16px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' }}
+              >
+                Iniciar sesión
+              </button>
+              <button 
+                onClick={() => loginWithRedirect({ authorizationParams: { screen_hint: 'signup', prompt: 'login' } })} 
+                style={{ backgroundColor: '#2d2f31', color: 'white', border: '1px solid #2d2f31', padding: '8px 16px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' }}
+              >
+                Regístrate
+              </button>
             </>
           )}
+
         </div>
       </nav>
 
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/login" element={<Login />} />
       </Routes>
     </Router>
   );
 }
+
 
 export default App
