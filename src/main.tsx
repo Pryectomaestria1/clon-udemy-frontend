@@ -12,6 +12,7 @@ ReactDOM.createRoot(document.getElementById('app')!).render(
       cacheLocation="localstorage"
       authorizationParams={{
         redirect_uri: window.location.origin,
+        audience: "https://dev-m5kswumrcd6lw7tg.us.auth0.com/api/v2/"
       }}
     >
       <App />

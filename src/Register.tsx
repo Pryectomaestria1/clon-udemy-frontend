@@ -7,7 +7,7 @@ export default function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch('http://localhost:3000/v1/auth/register', {
+    const res = await fetch('http://localhost:4000/v1/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(formData),
