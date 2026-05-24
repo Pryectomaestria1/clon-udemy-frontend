@@ -1,21 +1,21 @@
-import React from 'react'
+import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import { Auth0Provider } from '@auth0/auth0-react'
 import App from './App.tsx'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('app')!).render(
-  <React.StrictMode>
+  <StrictMode>
     <Auth0Provider
-      domain="dev-m5kswumrcd6lw7tg.us.auth0.com"
-      clientId="KgSKdzzG6Y4DYVYsvAc1Wf4seR1KbBFQ"
+      domain={import.meta.env.VITE_AUTH0_DOMAIN}
+      clientId={import.meta.env.VITE_AUTH0_CLIENT_ID}
       cacheLocation="localstorage"
       authorizationParams={{
         redirect_uri: window.location.origin,
-        audience: "https://dev-m5kswumrcd6lw7tg.us.auth0.com/api/v2/"
+        audience: import.meta.env.VITE_AUTH0_AUDIENCE
       }}
     >
       <App />
     </Auth0Provider>
-  </React.StrictMode>,
+  </StrictMode>,
 )

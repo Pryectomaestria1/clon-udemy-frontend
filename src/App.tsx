@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useParams, u
 import { useAuth0 } from '@auth0/auth0-react';
 import './index.css';
 
-const API_URL = 'http://localhost:3000/v1';
+const API_URL = import.meta.env.VITE_API_URL;
 
 const ToastContext = createContext<any>(null);
 
