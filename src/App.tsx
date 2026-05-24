@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useAuth0 } from '@auth0/auth0-react';
 import './index.css';
@@ -13,10 +13,20 @@ import { CourseDetailPage } from './pages/CourseDetailPage';
 import { HomePage } from './pages/HomePage';
 import { InstructorDashboard } from './pages/InstructorDashboard';
 import { MyCoursesPage } from './pages/MyCoursesPage';
+
+const publicApi = createApiClient();
+
 function App() {
   const { isLoading, isAuthenticated, user, getAccessTokenSilently } = useAuth0();
-  const api = createApiClient(getAccessTokenSilently);
-  const publicApi = createApiClient();
+  const tokenResolverRef = useRef(getAccessTokenSilently);
+  tokenResolverRef.current = getAccessTokenSilently;
+  const apiRef = useRef<ApiClient | null>(null);
+
+  if (!apiRef.current) {
+    apiRef.current = createApiClient(() => tokenResolverRef.current());
+  }
+
+  const api = apiRef.current;
   const [isInstructor, setIsInstructor] = useState(() => getInstructorRole(user ?? null));
   useEffect(() => {
     if (user) {
@@ -53,7 +63,7 @@ function App() {
       };
       syncUserProfile();
     }
-  }, [api, isAuthenticated, user]);
+  }, [isAuthenticated, user]);
   if (isLoading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' }}>
