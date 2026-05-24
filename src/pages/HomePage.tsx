@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import type { ApiClient } from '../api';
 import { useToast } from '../contexts/ToastContext';
 import { useCartContext } from '../contexts/CartContext';
+import type { Course, Enrollment } from '../types/models';
 
 interface HomePageProps {
   isInstructor: boolean;
@@ -13,7 +14,7 @@ interface HomePageProps {
 
 export function HomePage({ isInstructor, api, publicApi }: HomePageProps) {
   const { cart, setCart } = useCartContext();
-  const [courses, setCourses] = useState<any[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const { user, isAuthenticated } = useAuth0();
   const navigate = useNavigate();
   const showToast = useToast();
@@ -21,7 +22,7 @@ export function HomePage({ isInstructor, api, publicApi }: HomePageProps) {
   const [enrolledCourseIds, setEnrolledCourseIds] = useState<string[]>([]);
 
   useEffect(() => {
-    publicApi.get<any[]>('/courses')
+    publicApi.get<Course[]>('/courses')
       .then(data => {
         setCourses(data || []);
       })
@@ -32,17 +33,17 @@ export function HomePage({ isInstructor, api, publicApi }: HomePageProps) {
 
   useEffect(() => {
     if (isAuthenticated && user?.sub) {
-      api.get<{ enrollments?: any[] }>(`/enrollments/my-courses/${user.sub}`)
+      api.get<{ enrollments?: Enrollment[] }>(`/enrollments/my-courses/${user.sub}`)
         .then(data => {
           if (data && Array.isArray(data.enrollments)) {
-            setEnrolledCourseIds(data.enrollments.map((e: any) => e.courseId));
+            setEnrolledCourseIds(data.enrollments.map((e: Enrollment) => e.courseId));
           }
         })
         .catch(console.error);
     }
   }, [api, isAuthenticated, user]);
 
-  const handleAddToCart = (course: any) => {
+  const handleAddToCart = (course: Course) => {
     if (cart.some(item => item.id === course.id)) {
       showToast('Este curso ya está en tu carrito.', 'error');
       return;
@@ -57,7 +58,7 @@ export function HomePage({ isInstructor, api, publicApi }: HomePageProps) {
   const myBoughtCourses = courses.filter(c => enrolledCourseIds.includes(c.id) && c.instructorId !== currentUserId);
   const availableCourses = courses.filter(c => !enrolledCourseIds.includes(c.id) && c.instructorId !== currentUserId);
 
-  const renderCourseGrid = (courseList: any[]) => (
+  const renderCourseGrid = (courseList: Course[]) => (
     <div className="course-grid">
       {courseList.map(course => {
         const isOwner = user && course.instructorId === currentUserId;

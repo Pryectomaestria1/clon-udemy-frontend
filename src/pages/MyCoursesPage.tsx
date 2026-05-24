@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { Link } from 'react-router-dom';
 import type { ApiClient } from '../api';
+import type { Enrollment } from '../types/models';
 
 interface MyCoursesPageProps {
   api: ApiClient;
 }
 
 export function MyCoursesPage({ api }: MyCoursesPageProps) {
-  const [enrollments, setEnrollments] = useState<any[]>([]);
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const { user } = useAuth0();
 
   useEffect(() => {
@@ -17,7 +18,7 @@ export function MyCoursesPage({ api }: MyCoursesPageProps) {
         const userId = user?.sub;
         if (!userId) return;
 
-        const data = await api.get<{ enrollments?: any[] }>(`/enrollments/my-courses/${userId}`);
+        const data = await api.get<{ enrollments?: Enrollment[] }>(`/enrollments/my-courses/${userId}`);
         if (data.enrollments) setEnrollments(data.enrollments);
       } catch (e) {
         console.error('Error cargando inscripciones:', e);

@@ -3,6 +3,7 @@ import { useAuth0 } from '@auth0/auth0-react';
 import { useSearchParams } from 'react-router-dom';
 import type { ApiClient } from '../api';
 import { useToast } from '../contexts/ToastContext';
+import type { Course, Lesson, Module, Resource } from '../types/models';
 
 interface InstructorDashboardProps {
   api: ApiClient;
@@ -10,14 +11,14 @@ interface InstructorDashboardProps {
 }
 
 export function InstructorDashboard({ api, publicApi }: InstructorDashboardProps) {
-  const [courses, setCourses] = useState<any[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState(0);
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
 
   const [moduleTitle, setModuleTitle] = useState('');
   const [moduleDescription, setModuleDescription] = useState('');
@@ -46,9 +47,9 @@ export function InstructorDashboard({ api, publicApi }: InstructorDashboardProps
 
   const fetchInstructorCourses = async (autoSelectId?: string) => {
     try {
-      const data = await publicApi.get<any[]>('/courses');
+      const data = await publicApi.get<Course[]>('/courses');
       const instName = user?.sub || user?.name || user?.email || '';
-      const filtered = (data || []).filter((c: any) => c.instructorId === instName);
+      const filtered = (data || []).filter((c: Course) => c.instructorId === instName);
       setCourses(filtered);
       setLoading(false);
 
@@ -69,7 +70,7 @@ export function InstructorDashboard({ api, publicApi }: InstructorDashboardProps
   const handleCreateCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const createdCourse = await api.post<any>('/courses', {
+      const createdCourse = await api.post<Course>('/courses', {
         title,
         description,
         price: Number(price),
@@ -97,7 +98,7 @@ export function InstructorDashboard({ api, publicApi }: InstructorDashboardProps
 
   const selectCourseToManage = async (courseId: string) => {
     try {
-      const data = await publicApi.get<any>(`/courses/${courseId}`);
+      const data = await publicApi.get<Course>(`/courses/${courseId}`);
       setSelectedCourse(data);
       setEditTitle(data.title || '');
       setEditDescription(data.description || '');
@@ -133,7 +134,7 @@ export function InstructorDashboard({ api, publicApi }: InstructorDashboardProps
 
   const handleAddLesson = async (e: React.FormEvent, moduleId: string) => {
     e.preventDefault();
-    if (!lessonTitle) return;
+    if (!lessonTitle || !selectedCourse) return;
     try {
       await api.post(`/modules/${moduleId}/lessons`, { title: lessonTitle, description: lessonDescription });
       setLessonTitle('');
@@ -145,6 +146,7 @@ export function InstructorDashboard({ api, publicApi }: InstructorDashboardProps
   };
 
   const handleUpdateModule = async (moduleId: string) => {
+    if (!selectedCourse) return;
     try {
       await api.put(`/modules/${moduleId}`, { title: editModuleTitle, description: editModuleDescription });
       showToast('Módulo actualizado con éxito.', 'success');
@@ -156,6 +158,7 @@ export function InstructorDashboard({ api, publicApi }: InstructorDashboardProps
   };
 
   const handleUpdateLesson = async (lessonId: string) => {
+    if (!selectedCourse) return;
     try {
       await api.put(`/lessons/${lessonId}`, { title: editLessonTitle, description: editLessonDescription });
       showToast('Lección actualizada con éxito.', 'success');
@@ -167,6 +170,7 @@ export function InstructorDashboard({ api, publicApi }: InstructorDashboardProps
   };
 
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>, lessonId: string) => {
+    if (!selectedCourse) return;
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -186,6 +190,7 @@ export function InstructorDashboard({ api, publicApi }: InstructorDashboardProps
   };
 
   const handleResourceUpload = async (e: React.ChangeEvent<HTMLInputElement>, lessonId: string) => {
+    if (!selectedCourse) return;
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -315,7 +320,7 @@ export function InstructorDashboard({ api, publicApi }: InstructorDashboardProps
                 <p style={{ color: '#6a6f73', fontSize: '14px', fontStyle: 'italic' }}>Este curso aún no tiene módulos. Escribe el título de uno arriba para comenzar.</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                  {selectedCourse.modules.map((mod: any) => (
+                  {selectedCourse.modules.map((mod: Module) => (
                     <div key={mod.id} style={{ border: '1px solid #e4e6e8', padding: '20px', backgroundColor: '#f7f9fa' }}>
                       {editingModuleId === mod.id ? (
                         <div style={{ marginBottom: '15px', padding: '15px', border: '1px solid #a435f0', backgroundColor: '#fff' }}>
@@ -351,7 +356,7 @@ export function InstructorDashboard({ api, publicApi }: InstructorDashboardProps
                         </div>
                       )}
 
-                      {mod.lessons && mod.lessons.map((les: any) => (
+                      {mod.lessons && mod.lessons.map((les: Lesson) => (
                         <div key={les.id} style={{ backgroundColor: '#fff', border: '1px solid #e4e6e8', padding: '20px', borderRadius: '4px', marginBottom: '12px' }}>
                           {editingLessonId === les.id ? (
                             <div style={{ marginBottom: '15px', padding: '15px', border: '1px solid #a435f0', backgroundColor: '#fff' }}>
@@ -418,7 +423,7 @@ export function InstructorDashboard({ api, publicApi }: InstructorDashboardProps
                           {les.resources && les.resources.length > 0 && (
                             <div style={{ marginTop: '12px', padding: '10px', backgroundColor: '#f7f9fa', borderLeft: '3px solid #2d2f31' }}>
                               <span style={{ fontSize: '11px', color: '#6a6f73', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>Archivos Adjuntos:</span>
-                              {les.resources.map((res: any) => (
+                              {les.resources.map((res: Resource) => (
                                 <div key={res.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#2d2f31', padding: '3px 0' }}>
                                   <span>{res.title} ({res.fileType.toUpperCase()})</span>
                                   <a href={res.fileUrl} target="_blank" rel="noreferrer" style={{ color: '#a435f0', textDecoration: 'none', fontWeight: 'bold' }}>Descargar</a>

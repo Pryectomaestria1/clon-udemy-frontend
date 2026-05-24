@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 
-const ToastContext = createContext<any>(null);
+type ToastFn = (message: string, type?: 'success' | 'error' | 'info') => void;
+
+const ToastContext = createContext<ToastFn>(null!);
 
 export const useToast = () => useContext(ToastContext);
 

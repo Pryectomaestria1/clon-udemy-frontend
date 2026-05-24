@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import type { ApiClient } from '../api';
 import { useCartContext } from '../contexts/CartContext';
 import { useToast } from '../contexts/ToastContext';
+import type { Course, Enrollment, Lesson, Module, Resource } from '../types/models';
 
 interface CourseDetailPageProps {
   api: ApiClient;
@@ -13,7 +14,7 @@ interface CourseDetailPageProps {
 export function CourseDetailPage({ api, publicApi }: CourseDetailPageProps) {
   const { cart, setCart } = useCartContext();
   const { id } = useParams<{ id: string }>();
-  const [course, setCourse] = useState<any>(null);
+  const [course, setCourse] = useState<Course | null>(null);
   const [activeVideo, setActiveVideo] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const { user, isAuthenticated } = useAuth0();
@@ -25,7 +26,7 @@ export function CourseDetailPage({ api, publicApi }: CourseDetailPageProps) {
 
   useEffect(() => {
     if (!id) return;
-    publicApi.get<any>(`/courses/${id}`)
+    publicApi.get<Course>(`/courses/${id}`)
       .then(data => {
         setCourse(data);
         setLoading(false);
@@ -48,13 +49,13 @@ export function CourseDetailPage({ api, publicApi }: CourseDetailPageProps) {
     }
 
     if (user?.sub && id) {
-      api.get<{ enrollments?: any[] }>(`/enrollments/my-courses/${user.sub}`)
+      api.get<{ enrollments?: Enrollment[] }>(`/enrollments/my-courses/${user.sub}`)
         .then(data => {
           if (data && Array.isArray(data.enrollments)) {
-            const enrollment = data.enrollments.find((e: any) => e.courseId === id);
+            const enrollment = data.enrollments.find((e: Enrollment) => e.courseId === id);
             if (enrollment) {
               setIsEnrolled(true);
-              setEnrollmentId(enrollment.enrollmentId);
+              setEnrollmentId(enrollment.enrollmentId ?? null);
               setCompletedLessons(enrollment.completedLessons || []);
             } else {
               setIsEnrolled(false);
@@ -97,7 +98,7 @@ export function CourseDetailPage({ api, publicApi }: CourseDetailPageProps) {
     }
   };
 
-  const totalLessons = course?.modules?.reduce((acc: number, mod: any) => acc + (mod.lessons?.length || 0), 0) || 0;
+  const totalLessons = course?.modules?.reduce((acc: number, mod: Module) => acc + (mod.lessons?.length || 0), 0) || 0;
   const progressPercentage = totalLessons > 0 ? Math.round((completedLessons.length / totalLessons) * 100) : 0;
 
   if (loading) {
@@ -185,7 +186,7 @@ export function CourseDetailPage({ api, publicApi }: CourseDetailPageProps) {
             <p style={{ color: '#6a6f73' }}>El instructor aún no ha estructurado los módulos de este curso.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              {course.modules.map((mod: any) => (
+              {course.modules.map((mod: Module) => (
                 <div key={mod.id} style={{ border: '1px solid #d1d7dc', padding: '20px', backgroundColor: '#f7f9fa' }}>
                   <div style={{ borderBottom: '1px solid #d1d7dc', paddingBottom: '10px', marginBottom: '10px' }}>
                     <h4 style={{ fontWeight: 'bold', fontSize: '16px', color: '#2d2f31', margin: 0 }}>
@@ -201,7 +202,7 @@ export function CourseDetailPage({ api, publicApi }: CourseDetailPageProps) {
                     <p style={{ fontSize: '13px', color: '#6a6f73' }}>Sin lecciones creadas todavía.</p>
                   ) : (
                     <ul style={{ listStyle: 'none', paddingLeft: 0 }}>
-                      {mod.lessons.map((les: any) => {
+                      {mod.lessons.map((les: Lesson) => {
                         const isCompleted = completedLessons.includes(les.id);
                         return (
                           <li key={les.id} style={{ padding: '15px 0', borderBottom: '1px dashed #e4e6e8' }}>
@@ -221,7 +222,7 @@ export function CourseDetailPage({ api, publicApi }: CourseDetailPageProps) {
                                 {les.videoUrl ? (
                                   isEnrolled ? (
                                     <button
-                                      onClick={() => setActiveVideo(les.videoUrl)}
+                                      onClick={() => setActiveVideo(les.videoUrl ?? null)}
                                       style={{ backgroundColor: '#a435f0', color: 'white', border: 'none', padding: '6px 14px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}
                                     >
                                       Ver clase
@@ -240,7 +241,7 @@ export function CourseDetailPage({ api, publicApi }: CourseDetailPageProps) {
                             {isEnrolled && les.resources && les.resources.length > 0 && (
                               <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid #d1d7dc', paddingTop: '10px' }}>
                                 <span style={{ fontSize: '11px', color: '#6a6f73', fontWeight: 'bold' }}>Material descargable adjunto:</span>
-                                {les.resources.map((res: any) => (
+                                {les.resources.map((res: Resource) => (
                                   <a
                                     key={res.id}
                                     href={res.fileUrl}
