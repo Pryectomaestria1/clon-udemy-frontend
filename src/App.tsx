@@ -2,8 +2,21 @@ import { useEffect, useState, createContext, useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth0 } from '@auth0/auth0-react';
 import './index.css';
+import { getInstructorRole, setStoredRole } from './utils/roles';
 
 const API_URL = import.meta.env.VITE_API_URL;
+
+type CartItem = {
+  id: string;
+  title: string;
+  price: number;
+  coverImage?: string;
+  instructorId?: string;
+  instructor?: {
+    name?: string;
+  };
+  [key: string]: unknown;
+};
 
 const ToastContext = createContext<any>(null);
 
@@ -150,15 +163,11 @@ function Navigation({ cartCount, isInstructor }: { cartCount: number; isInstruct
   );
 }
 
-function HomePage({ cart, setCart }: { cart: any[]; setCart: React.Dispatch<React.SetStateAction<any[]>> }) {
+function HomePage({ cart, setCart, isInstructor }: { cart: CartItem[]; setCart: React.Dispatch<React.SetStateAction<CartItem[]>>; isInstructor: boolean }) {
   const [courses, setCourses] = useState<any[]>([]);
   const { user, isAuthenticated, getAccessTokenSilently } = useAuth0();
   const navigate = useNavigate();
   const showToast = useToast();
-
-  const isInstructor =
-    user?.['https://udemyclone.com/roles']?.includes('Instructor') ||
-    (user?.sub && localStorage.getItem(`role_${user.sub}`) === 'Instructor');
 
   const [enrolledCourseIds, setEnrolledCourseIds] = useState<string[]>([]);
 
@@ -331,7 +340,7 @@ function HomePage({ cart, setCart }: { cart: any[]; setCart: React.Dispatch<Reac
   );
 }
 
-function CourseDetailPage({ cart, setCart }: { cart: any[]; setCart: React.Dispatch<React.SetStateAction<any[]>> }) {
+function CourseDetailPage({ cart, setCart }: { cart: CartItem[]; setCart: React.Dispatch<React.SetStateAction<CartItem[]>> }) {
   const { id } = useParams<{ id: string }>();
   const [course, setCourse] = useState<any>(null);
   const [activeVideo, setActiveVideo] = useState<string | null>(null);
@@ -673,9 +682,7 @@ function BecomeInstructorPage() {
     );
   }
 
-  const alreadyInstructor =
-    user?.['https://udemyclone.com/roles']?.includes('Instructor') ||
-    (user?.sub && localStorage.getItem(`role_${user.sub}`) === 'Instructor');
+  const alreadyInstructor = getInstructorRole(user ?? null);
 
   if (alreadyInstructor) {
     return (
@@ -713,7 +720,7 @@ function BecomeInstructorPage() {
 
       if (res.ok) {
         if (user?.sub) {
-          localStorage.setItem(`role_${user.sub}`, 'Instructor');
+          setStoredRole(user.sub, 'instructor');
           window.dispatchEvent(new Event('instructor-role-changed'));
         }
         
@@ -1602,7 +1609,7 @@ function MyCoursesPage() {
   );
 }
 
-function CartPage({ cart, setCart }: { cart: any[]; setCart: React.Dispatch<React.SetStateAction<any[]>> }) {
+function CartPage({ cart, setCart }: { cart: CartItem[]; setCart: React.Dispatch<React.SetStateAction<CartItem[]>> }) {
   const { user, isAuthenticated, loginWithRedirect, getAccessTokenSilently } = useAuth0();
   const navigate = useNavigate();
   const showToast = useToast();
@@ -1827,23 +1834,19 @@ function CartPage({ cart, setCart }: { cart: any[]; setCart: React.Dispatch<Reac
 
 function App() {
   const { isLoading, isAuthenticated, user, getAccessTokenSilently } = useAuth0();
-  const [cart, setCart] = useState<any[]>(() => {
+  const [cart, setCart] = useState<CartItem[]>(() => {
     const saved = localStorage.getItem('udemy_cart');
     return saved ? JSON.parse(saved) : [];
   });
 
   const [isInstructor, setIsInstructor] = useState(() => {
-    const sub = user?.sub;
-    return user?.['https://udemyclone.com/roles']?.includes('Instructor') ||
-      (sub ? localStorage.getItem(`role_${sub}`) === 'Instructor' : false);
+    return getInstructorRole(user ?? null);
   });
 
   // Re-check instructor role when user changes
   useEffect(() => {
     if (user) {
-      const fromClaim = user['https://udemyclone.com/roles']?.includes('Instructor');
-      const fromStorage = user.sub ? localStorage.getItem(`role_${user.sub}`) === 'Instructor' : false;
-      setIsInstructor(fromClaim || fromStorage);
+      setIsInstructor(getInstructorRole(user));
     }
   }, [user]);
 
@@ -1863,7 +1866,7 @@ function App() {
       const syncUserProfile = async () => {
         try {
           const token = await getAccessTokenSilently();
-          const getFriendlyName = (u: any) => {
+          const getFriendlyName = (u: { name?: string; nickname?: string; email?: string } | null | undefined) => {
             if (!u) return 'Usuario Demo';
             if (u.name && !u.name.includes('@')) {
               return u.name;
@@ -1875,7 +1878,7 @@ function App() {
           };
           const name = getFriendlyName(user);
           
-          await fetch(`${API_URL}/users/profile`, {
+          const response = await fetch(`${API_URL}/users/profile`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -1886,6 +1889,17 @@ function App() {
               avatarUrl: user.picture || ''
             })
           });
+
+          if (response.ok) {
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+              const data: { role?: string } = await response.json();
+              if (data?.role?.toLowerCase() === 'instructor' && user.sub) {
+                setStoredRole(user.sub, 'instructor');
+                setIsInstructor(true);
+              }
+            }
+          }
         } catch (error) {
           console.error('Failed to sync user profile:', error);
         }
@@ -1907,7 +1921,7 @@ function App() {
       <Router>
         <Navigation cartCount={cart.length} isInstructor={isInstructor} />
         <Routes>
-          <Route path="/" element={<HomePage cart={cart} setCart={setCart} />} />
+          <Route path="/" element={<HomePage cart={cart} setCart={setCart} isInstructor={isInstructor} />} />
           <Route path="/course/:id" element={<CourseDetailPage cart={cart} setCart={setCart} />} />
           <Route path="/become-instructor" element={<BecomeInstructorPage />} />
           <Route path="/instructor" element={<InstructorDashboard />} />
